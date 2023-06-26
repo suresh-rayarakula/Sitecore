@@ -3,7 +3,7 @@
  <sitecore>
  <settings>
  <setting name="Sitecore.ContentTagging.OpenCalais.CalaisEndpoint" value="https://permid.org/api/calais" />
- <setting name="Sitecore.ContentTagging.OpenCalais.CalaisAccessToken" value="i0ly6ALhNA5JfFBw3ypph4HGBDiShXou" />
+ <setting name="Sitecore.ContentTagging.OpenCalais.CalaisAccessToken" value="XXXXXXXXXXXXXXXXXXXXXXX" />
  <setting name="Sitecore.ContentTagging.OpenCalais.CalaisLanguage" value="English" />
  </settings>
 </sitecore>
