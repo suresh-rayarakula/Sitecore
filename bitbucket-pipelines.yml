@@ -1,0 +1,59 @@
+# Prerequisites: $XMC_ORG_CLIENT_ID $XMC_ORG_CLIENT_SECRET setup as repository variables.
+
+# To run your pipeline on a Windows machine, create a self-hosted Windows runner.
+# For instructions on setting up a Windows runner, see https://support.atlassian.com/bitbucket-cloud/docs/set-up-runners-for-windows/
+
+image: mcr.microsoft.com/dotnet/sdk:6.0
+
+definitions:
+  scripts:
+    install-jq: &install-jq apt-get update && apt-get install -y jq
+    loginXMCloud: &loginXMCloud
+      dotnet tool restore;
+      dotnet sitecore cloud login --client-credentials --client-id ${XMC_ORG_CLIENT_ID} --client-secret ${XMC_ORG_CLIENT_SECRET} --allow-write;
+  steps:
+    - step: &promote-deployment
+        caches:
+          - dotnetcore
+        script:
+          - *install-jq
+          - *loginXMCloud
+          - export LastDeploymentId=$(dotnet sitecore cloud deployment list --environment-id $PromoteSourceEnvId --json | jq -r '[.[] | select(.deploymentStatus==2)] | last | .id')
+          - echo $LastDeploymentId
+          - dotnet sitecore cloud environment promote --environment-id $EnvironmentId --source-id $LastDeploymentId
+
+pipelines:
+  custom:
+    deployment-to-dev: # Prerequisites: $EnvironmentId setup as deployment variables.
+      - step:
+          name: Deploy to Dev
+          caches:
+            - dotnetcore
+          deployment: Dev
+          script:
+            - *install-jq
+            - *loginXMCloud
+            - export DEPLOYMENT_ID=$(dotnet sitecore cloud deployment create --environment-id ${EnvironmentId} --no-watch --no-start --upload --json | jq -r '.id')
+            - export DEPLOYMENT_RESULT=$(dotnet sitecore cloud deployment start --deployment-id $DEPLOYMENT_ID --json | jq '.')
+            - export DEPLOYMENT_SUCCESS=$( jq -r  '.IsCompleted' <<< "${DEPLOYMENT_RESULT}" )
+            - |
+              if [[ $DEPLOYMENT_SUCCESS == true ]]; then
+                echo $DEPLOYMENT_ID
+                exit 0
+              else
+                echo $DEPLOYMENT_RESULT
+                # Avoid exceeds depth limit for parsing
+                # echo $(dotnet sitecore cloud deployment log --deployment-id $DEPLOYMENT_ID --json | grep '{.*' | jq '.Logs | [.[] | select(.LogLevel=="error" or (.LogMessage | test("error|failed";"i")))]')
+                dotnet sitecore cloud deployment log --deployment-id $DEPLOYMENT_ID
+                exit 1
+              fi
+    promote-from-dev-to-uat: # Prerequisites: $PromoteSourceEnvId $EnvironmentId setup as deployment variables.
+      - step:
+          <<: *promote-deployment
+          name: Promote deployment from Dev to UAT
+          deployment: UAT
+    promote-from-uat-to-prod: # Prerequisites: $PromoteSourceEnvId $EnvironmentId setup as deployment variables.
+      - step:
+          <<: *promote-deployment
+          name: Promote deployment from UAT to Production
+          deployment: Production   
