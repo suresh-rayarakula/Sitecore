@@ -1,0 +1,21 @@
+$searchText = "Good News"
+ 
+$items = Get-ChildItem -Path "master:/sitecore" -Recurse |
+
+    Where-Object {
+
+        $_.Fields | Where-Object {
+
+            $_.Value -contains $searchText
+
+        }
+
+    }
+ 
+foreach ($item in $items) {
+
+    Write-Host "Found in item: $($item.Paths.FullPath)"
+
+}
+
+ 
