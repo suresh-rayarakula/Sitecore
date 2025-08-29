@@ -1,0 +1,16 @@
+# Field name you're searching for (case-insensitive)
+$fieldNameToFind = "productType"
+
+# Define the root path to search under (change as needed)
+$rootPath = "master:/sitecore"
+
+# Get all items recursively under the root path
+$items = Get-ChildItem -Path $rootPath -Recurse |
+    Where-Object {
+        $_.Fields[$fieldNameToFind] -ne $null
+    }
+
+# Output matching item paths
+foreach ($item in $items) {
+    Write-Host "Field '$fieldNameToFind' found in item: $($item.Paths.FullPath)" -ForegroundColor Green
+}
